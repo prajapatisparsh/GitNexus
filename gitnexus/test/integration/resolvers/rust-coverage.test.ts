@@ -57,10 +57,40 @@ describe('F72 — macro invocations', () => {
   });
 
   it('vec! macro emits @reference.macro', () => {
-    const src = `fn f() { let v = vec![1, 2, 3]; }\n`;
+    const src = `fn f() { let v = vec![1, 2, 3]; }\\n`;
     const matches = emitRustScopeCaptures(src, 'test.rs') as CaptureMatch[];
     const macroRefs = matches.filter((m) => m['@reference.macro']);
     const macroNames = macroRefs.map((m) => m['@reference.name']?.text);
     expect(macroNames).toContain('vec');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F70 — struct literal constructor calls
+// ---------------------------------------------------------------------------
+
+describe('F70 — struct literal constructor calls', () => {
+  it('bare struct Foo {} captures Foo as @reference.name', () => {
+    const src = `fn f() { let _ = Foo { x: 1 }; }\\n`;
+    const matches = emitRustScopeCaptures(src, 'test.rs') as CaptureMatch[];
+    const ctors = matches.filter((m) => m['@reference.call.constructor']);
+    expect(ctors.length).toBe(1);
+    expect(ctors[0]['@reference.name'].text).toBe('Foo');
+  });
+
+  it('scoped struct foo::bar::Baz {} captures Baz as @reference.name', () => {
+    const src = `fn f() { let _ = foo::bar::Baz { x: 1 }; }\\n`;
+    const matches = emitRustScopeCaptures(src, 'test.rs') as CaptureMatch[];
+    const ctors = matches.filter((m) => m['@reference.call.constructor']);
+    const names = ctors.map((m) => m['@reference.name']?.text);
+    expect(names).toContain('Baz');
+  });
+
+  it('turbofish struct Foo::<T> {} captures Foo as @reference.name', () => {
+    const src = `fn f() { let _ = Foo::<i32> { x: 1 }; }\\n`;
+    const matches = emitRustScopeCaptures(src, 'test.rs') as CaptureMatch[];
+    const ctors = matches.filter((m) => m['@reference.call.constructor']);
+    const names = ctors.map((m) => m['@reference.name']?.text);
+    expect(names).toContain('Foo');
   });
 });
